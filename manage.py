@@ -17,7 +17,7 @@ def main():
         ) from exc
 
     import startup_license
-    startup_license.verify_license()
+#    startup_license.verify_license()
     execute_from_command_line(sys.argv)
 
 if __name__ == '__main__':
