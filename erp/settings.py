@@ -14,10 +14,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # ----------------------
 SECRET_KEY = '+n#^73%_1y3mjn+#kpo--84(5-i%2k7wfr$(+=80h3af*bj2r8'
 
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
-
+ALLOWED_HOSTS = [
+    "abdelfattahstar.pythonanywhere.com"
+]
 # ----------------------
 # APPS
 # ----------------------
