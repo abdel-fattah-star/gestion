@@ -175,11 +175,6 @@ class BonReceptionAdmin(admin.ModelAdmin):
         "fournisseur__nom",
     )
 
-    list_filter = (
-        "statut",
-        "date",
-    )
-
     exclude = (
         "total_ht",
         "total_rem",
@@ -248,7 +243,6 @@ from django.utils.html import format_html
 @admin.register(FactureAchat)
 class FactureAchatAdmin(admin.ModelAdmin):
 
-
     class Media:
         js = (
             "achats/br_auto_fournisseur.js",
@@ -256,7 +250,6 @@ class FactureAchatAdmin(admin.ModelAdmin):
         )
 
     inlines = [LigneFactureAchatInline]
-
 
     list_display = (
         "numero",
@@ -266,11 +259,11 @@ class FactureAchatAdmin(admin.ModelAdmin):
         "bouton_pdf",
         "colored_statut",
     )
+
     search_fields = (
         "numero",
         "fournisseur__nom",
     )
-
 
     fields = (
         "numero",
@@ -322,25 +315,6 @@ class FactureAchatAdmin(admin.ModelAdmin):
     colored_statut.short_description = "Statut"
 
     # ===============================
-    # STATUT COULEUR
-    # ===============================
-    def statut_colore(self, obj):
-
-        couleurs = {
-            "brouillon": "gray",
-            "validee": "green",
-            "payee": "blue",
-        }
-
-        return format_html(
-            '<b style="color:{}">{}</b>',
-            couleurs.get(obj.statut, "black"),
-            obj.get_statut_display(),
-        )
-
-    statut_colore.short_description = "Statut"
-
-    # ===============================
     # BOUTON PDF
     # ===============================
     def bouton_pdf(self, obj):
@@ -354,6 +328,26 @@ class FactureAchatAdmin(admin.ModelAdmin):
         )
 
     bouton_pdf.short_description = "PDF"
+
+    # ===============================
+    # BLOQUER MODIFICATION SI PAYEE
+    # ===============================
+    def has_change_permission(self, request, obj=None):
+
+        if obj and obj.statut == "payee":
+            return False
+
+        return super().has_change_permission(request, obj)
+
+    # ===============================
+    # BLOQUER SUPPRESSION SI PAYEE
+    # ===============================
+    def has_delete_permission(self, request, obj=None):
+
+        if obj and obj.statut == "payee":
+            return False
+
+        return super().has_delete_permission(request, obj)
 
 
 # =====================================================

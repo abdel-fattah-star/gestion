@@ -116,11 +116,33 @@
 ">
 
     <!-- PDF -->
-    <a href="{% url 'liste_factachats_pdf' %}?{% if date_debut %}date_debut={{ date_debut }}&{% endif %}{% if date_fin %}date_fin={{ date_fin }}{% endif %}"
-       target="_blank"
-       class="btn btn-primary">
 
+    <style>
+    .btn-pdf{
+        background: linear-gradient(135deg,#16a34a ,#16a34a);
+        color:white;
+        border:none;
+        border-radius:30px;
+        padding:10px 22px;
+        font-weight:600;
+        transition:0.3s;
+    }
+
+    .btn-pdf:hover{
+        transform:translateY(-2px);
+        box-shadow:0 6px 15px rgba(0,0,0,0.2);
+        color:white;
+    }
+    </style>
+
+    <a href="{% url 'liste_factachats_pdf' %}?{% if date_debut %}date_debut={{ date_debut }}&{% endif %}{% if date_fin %}date_fin={{ date_fin }}{% endif %}"
+    target="_blank"
+    class="btn-pdf">
+
+        <i class="fa-solid fa-file-pdf"></i>
         Imprimer PDF
+
+    </a>
 
     </a>
 
@@ -179,6 +201,8 @@ function generateXML() {
 
             <th>Total TTC</th>
             <th>R.Source</th>
+            <th>Net.Servi</th>
+
         </tr>
     </thead>
 
@@ -197,6 +221,8 @@ function generateXML() {
 
             <td>{{ bon.total_ttc|floatformat:3 }}</td>
             <td class="right">{{ bon.r_source|floatformat:3 }}</td>
+            <td class="right">{{ bon.net_servi|floatformat:3 }}</td>
+
         </tr>
         {% empty %}
         <tr>
@@ -219,6 +245,8 @@ function generateXML() {
 
             <td>{{ totaux.total_ttc|default:0|floatformat:3 }}</td>
             <td class="right">{{ total_r_source|floatformat:3 }}</td>
+            <td class="right">{{ totaux_net_servi|floatformat:3 }}</td>
+
         </tr>
     </tfoot>
 </table>

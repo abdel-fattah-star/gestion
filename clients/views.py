@@ -107,34 +107,60 @@ def calcul_releve_client(client, date_debut=None, date_fin=None):
     # =========================
     # MOUVEMENTS (SEULEMENT PÉRIODE)
     # =========================
+    # =========================
+    # MOUVEMENTS
+    # =========================
     mouvements = []
 
+    # ---- BONS
     for b in bons:
         mouvements.append({
             "date": b.date,
-            "libelle": f" {b.numero}",
+            "libelle": b.numero,
             "debit": Decimal(b.total_ttc or 0),
             "credit": Decimal(0),
-            "lignes": b.lignes.all()
+            "lignes": b.lignes.all(),
+            "type": "bon"
         })
 
+    # ---- AVOIRS
     for a in avoirs:
         mouvements.append({
             "date": a.date,
-            "libelle": f"{a.numero}",
+            "libelle": a.numero,
             "debit": Decimal(0),
             "credit": Decimal(a.total_ttc or 0),
-            "lignes": a.lignes.all()
+            "lignes": a.lignes.all(),
+            "type": "avoir"
         })
 
+    # ---- REGLEMENTS REGROUPES PAR DATE
+    regs_par_date = {}
+
     for r in reglements:
-        mouvements.append({
-            "date": r.date,
-            "libelle": f"Règlement n° {r.numero}",
-            "debit": Decimal(0),
-            "credit": Decimal(r.montant or 0),
-            "lignes": []
+
+        if r.date not in regs_par_date:
+
+            regs_par_date[r.date] = {
+                "date": r.date,
+                "libelle": "Règlements",
+                "debit": Decimal(0),
+                "credit": Decimal(0),
+                "lignes": [],
+                "details_reglement": [],
+                "type": "reglement"
+            }
+
+        regs_par_date[r.date]["credit"] += Decimal(r.montant or 0)
+
+        regs_par_date[r.date]["details_reglement"].append({
+            "mode_paiement": r.mode_paiement,
+            "libelle": r.libelle,
+            "echeance": r.echeance,
+            "montant": Decimal(r.montant or 0)
         })
+
+    mouvements.extend(regs_par_date.values())
 
     mouvements.sort(key=lambda x: x["date"])
 
@@ -242,6 +268,17 @@ def releve_client_pdf(request, client_id):
     elements = []
     styles = getSampleStyleSheet()
 
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT
+
+    styles2 = ParagraphStyle(
+        "styles2",
+        fontSize=8,
+        leading=12,
+        alignment=TA_LEFT,
+        wordWrap="CJK",          # important pour wrap
+        splitLongWords=True,     # coupe les mots longs
+    )
     # =========================
     # SOCIETE (VISIBLE FIX)
     # =========================
@@ -281,6 +318,18 @@ def releve_client_pdf(request, client_id):
     # =========================
     # HEADER CLIENT
     # =========================
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+
+    title_style = ParagraphStyle(
+        "title_style",
+        parent=styles["Heading2"],
+        alignment=TA_CENTER,
+        fontSize=16,
+        spaceAfter=12,
+    )
+    elements.append(Paragraph(f"Relevé Client ", title_style))
+    elements.append(Spacer(1, 10))
 
     elements.append(Paragraph(
         f"<b>Client :</b> {client.nom}",
@@ -308,22 +357,74 @@ def releve_client_pdf(request, client_id):
         data.append([
             m["date"].strftime("%d/%m/%Y"),
             m["libelle"],
-            f"{m['debit']:.3f}",
-            f"{m['credit']:.3f}",
+            f"{m['debit']:.3f}" if m['debit'] else "",
+            f"{m['credit']:.3f}"  if m['credit'] else "",
             f"{m['solde']:.3f}",
         ])
 
         # =========================
-        # DÉTAILS PRODUITS (FIX IMPORTANT)
+        # DETAILS BONS
         # =========================
-        for l in m.get("lignes", []):
-            data.append([
-                "",
-                f"   • {l.quantite} x {l.produit}",
-                "",
-                "",
-                ""
-            ])
+        if m.get("type") == "bon":
+
+            for l in m.get("lignes", []):
+
+                data.append([
+                    "",
+                    Paragraph(
+                        f"• {l.quantite} x {l.produit}",
+                        styles2
+                    ),
+                    "",
+                    "",
+                    ""
+                ])
+
+        # =========================
+        # DETAILS AVOIRS → COLONNE CREDIT
+        # =========================
+        elif m.get("type") == "avoir":
+
+            for l in m.get("lignes", []):
+
+                data.append([
+                    "",
+                    Paragraph(
+                        f"• {l.quantite} x {l.produit}",
+                        styles2
+                    ),
+                    "",
+                    "",
+                    ""
+                ])
+
+        # =========================
+        # DETAILS REGLEMENTS
+        # =========================
+        elif m.get("type") == "reglement":
+
+            for d in m.get("details_reglement", []):
+
+                echeance = (
+                    d["echeance"].strftime("%d/%m/%Y")
+                    if d.get("echeance")
+                    else ""
+                )
+
+                txt = (
+                    f"{d['montant']:.3f} TND — "
+                    f"{d['mode_paiement']} "
+                    f"{d.get('libelle','')} "
+                    f"{echeance}"
+                )
+
+                data.append([
+                    "",
+                    Paragraph(txt, styles2),
+                    "",
+                    "",
+                    ""
+                ])
 
     # =========================
     # TOTAL FINAL
@@ -351,6 +452,10 @@ def releve_client_pdf(request, client_id):
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
         ("BACKGROUND", (0,-1), (-1,-1), colors.lightgrey),
+
+        # 🔥 ALIGNEMENT
+        ("ALIGN", (0,0), (1,-1), "LEFT"),   # Date + Libellé
+        ("ALIGN", (2,0), (-1,-1), "RIGHT")  # Débit + Crédit + Solde
     ]))
 
     elements.append(table)

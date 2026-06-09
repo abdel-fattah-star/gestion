@@ -10,7 +10,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 import qrcode
 from core.utils import get_societe
-
+from core.report_styles import STYLE_LIBELLE
 def generer_facture_achat_pdf(facture):
 
     buffer = BytesIO()
@@ -142,7 +142,7 @@ def generer_facture_achat_pdf(facture):
                 montant_ttc = base_tva + montant_tva
 
                 data.append([
-                    str(ligne.produit),
+                    Paragraph(str(ligne.produit), STYLE_LIBELLE),
                     f"{ligne.quantite}",
                     f"{ligne.prix_ht:.3f}",
                     "" if (ligne.taux_rem or 0) == 0 else f"{ligne.taux_rem}",
@@ -189,7 +189,7 @@ def generer_facture_achat_pdf(facture):
         ["Total TTC", f"{totaux['total_ttc']:.3f} TND"],
     ]
 
-    total_table = Table(total_data, colWidths=[6*cm, 4*cm])
+    total_table = Table(total_data, colWidths=[6*cm, 13*cm])
 
     total_table.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.8, colors.black),

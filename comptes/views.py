@@ -8,11 +8,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib.units import cm
-
+from reportlab.platypus import Paragraph
 from .models import Compte
 from reglements.models import MouvementCompte
 from core.models import Societe
 from django.utils.dateparse import parse_date
+from core.report_styles import STYLE_LIBELLE
 
 # ------------------- UTILITAIRE -------------------
 def calcul_mouvements_solde(compte, date_debut=None, date_fin=None):
@@ -50,9 +51,17 @@ def calcul_mouvements_solde(compte, date_debut=None, date_fin=None):
 
         # Libellé détaillé si règlement client/fournisseur
         if hasattr(m, "reglement_client") and m.reglement_client:
-            libelle = f"Règlement Client RC n°{m.reglement_client.numero}"
+            libelle = (
+                f"Règlement Client "
+                f"{m.reglement_client.client.nom}"
+            )
+
         elif hasattr(m, "reglement_fournisseur") and m.reglement_fournisseur:
-            libelle = f"Règlement Fournisseur RF n°{m.reglement_fournisseur.numero}"
+            libelle = (
+                f"Règlement Fournisseur "
+                f"{m.reglement_fournisseur.fournisseur.nom}"
+            )
+
         else:
             libelle = m.reference or f"MC n°{m.id}"
 
@@ -159,7 +168,7 @@ def releve_compte_pdf(request, compte_id):
     for l in lignes:
         data.append([
             l["date"].strftime("%d/%m/%Y"),
-            l["libelle"],
+            Paragraph(l["libelle"], STYLE_LIBELLE),
             f"{l['debit']:.3f}" if l["debit"] else "",
             f"{l['credit']:.3f}" if l["credit"] else "",
             f"{l['solde']:.3f}"

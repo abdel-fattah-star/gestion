@@ -10,6 +10,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 import qrcode
 from core.utils import get_societe
+from reportlab.platypus import Paragraph
+from core.report_styles import STYLE_LIBELLE
 
 def generer_bl_pdf(bonlivraison):
 
@@ -95,7 +97,7 @@ def generer_bl_pdf(bonlivraison):
 
     elements.append(header_table)
     elements.append(Spacer(0,0))
-    elements.append(Paragraph(f"<b>Bon livraison N° {bonlivraison.numero}</b>", styles["Heading2"]))
+    elements.append(Paragraph(f"<b>{bonlivraison.numero}</b>", styles["Heading3"]))
     elements.append(Paragraph(f"Date : {bonlivraison.date.strftime('%d/%m/%Y')}", styles["Normal"]))
     elements.append(Spacer(1, 20))
 
@@ -151,7 +153,7 @@ def generer_bl_pdf(bonlivraison):
                 montant_ttc = base_tva + montant_tva
 
                 data.append([
-                    str(ligne.produit),
+                    Paragraph(str(ligne.produit), STYLE_LIBELLE),
                     f"{ligne.quantite}",
                     f"{ligne.prix_ht:.3f}",
                     "" if (ligne.taux_rem or 0) == 0 else f"{ligne.taux_rem}",
@@ -197,7 +199,7 @@ def generer_bl_pdf(bonlivraison):
         ["Total TTC", f"{totaux['total_ttc']:.3f} TND"],
     ]
 
-    total_table = Table(total_data, colWidths=[6*cm, 4*cm])
+    total_table = Table(total_data, colWidths=[13*cm, 6*cm])
 
     total_table.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.8, colors.black),
@@ -212,7 +214,7 @@ def generer_bl_pdf(bonlivraison):
     # CONDITIONS
     # ======================
     comment_data = [
-        ["On ajoute un commentaire telque ; mode de livraison mode de paiement etc ..."],
+        [" Merci pour votre visite"],
     ]
 
     comment_table = Table(comment_data, colWidths=[20*cm, 40*cm])

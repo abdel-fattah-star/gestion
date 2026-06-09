@@ -9,6 +9,7 @@ class ReglementClientAdmin(admin.ModelAdmin):
 
     list_display = ("numero", "date", "client", "montant", "mode_paiement", "imprimer_quittance")
     search_fields = ("numero", "client__nom")
+    exclude = ("numero",)
 
 
     def imprimer_quittance(self, obj):
@@ -27,7 +28,8 @@ class ReglementFournisseurAdmin(admin.ModelAdmin):
 
     list_display = ("numero", "date", "fournisseur", "montant", "mode_paiement", "imprimer_quittance")
     search_fields = ("numero", "fournisseur__nom")
-
+    exclude = ("numero",)
+    
     def imprimer_quittance(self, obj):
         url = reverse("quittance_fournisseur_pdf", args=[obj.id])
         return format_html(

@@ -78,32 +78,55 @@ def calcul_releve_fournisseur(fournisseur, date_debut=None, date_fin=None):
     # =========================
     mouvements = []
 
+    # ---- BONS RECEPTION
     for b in bons:
         mouvements.append({
             "date": b.date,
             "libelle": f"Bon réception n° {b.numero}",
             "debit": Decimal(b.total_ttc or 0),
             "credit": Decimal(0),
-            "lignes": b.lignes.all()
+            "lignes": b.lignes.all(),
+            "type": "bon"
         })
 
+    # ---- AVOIRS
     for a in avoirs:
         mouvements.append({
             "date": a.date,
             "libelle": f"Avoir n° {a.numero}",
             "debit": Decimal(0),
             "credit": Decimal(a.total_ttc or 0),
-            "lignes": a.lignes.all()
+            "lignes": a.lignes.all(),
+            "type": "avoir"
         })
 
+    # ---- REGLEMENTS REGROUPES PAR DATE
+    regs_par_date = {}
+
     for r in reglements:
-        mouvements.append({
-            "date": r.date,
-            "libelle": f"Règlement n° {r.numero}",
-            "debit": Decimal(0),
-            "credit": Decimal(r.montant or 0),
-            "lignes": []
+
+        if r.date not in regs_par_date:
+
+            regs_par_date[r.date] = {
+                "date": r.date,
+                "libelle": "Règlements",
+                "debit": Decimal(0),
+                "credit": Decimal(0),
+                "lignes": [],
+                "details_reglement": [],
+                "type": "reglement"
+            }
+
+        regs_par_date[r.date]["credit"] += Decimal(r.montant or 0)
+
+        regs_par_date[r.date]["details_reglement"].append({
+            "mode_paiement": r.mode_paiement,
+            "libelle": getattr(r, "libelle", ""),
+            "echeance": r.echeance,
+            "montant": Decimal(r.montant or 0)
         })
+
+    mouvements.extend(regs_par_date.values())
 
     mouvements.sort(key=lambda x: x["date"])
 
@@ -174,7 +197,6 @@ def releve_fournisseur_pdf(request, fournisseur_id):
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
 
-    # SAFE PARSING
     def parse_date(value):
         if not value:
             return None
@@ -200,6 +222,22 @@ def releve_fournisseur_pdf(request, fournisseur_id):
     elements = []
     styles = getSampleStyleSheet()
 
+    # ===== STYLE PRODUITS =====
+    style_produit = ParagraphStyle(
+        "style_produit",
+        parent=styles["Normal"],
+        fontSize=8,
+        leftIndent=8,
+    )
+
+    # ===== STYLE TITRE =====
+    titre_style = ParagraphStyle(
+        "titre_style",
+        parent=styles["Heading2"],
+        alignment=1,
+        fontSize=18,
+    )
+
     # SOCIETE
     societe = get_societe()
 
@@ -216,39 +254,112 @@ def releve_fournisseur_pdf(request, fournisseur_id):
 
     elements.append(Spacer(1, 10))
 
+    # TITRE CENTRE + PLUS GRAND
+    elements.append(
+        Paragraph("Releve Fournisseur", titre_style)
+    )
+
+    elements.append(Spacer(1, 10))
+
     # HEADER
-    elements.append(Paragraph(f"<b>Fournisseur :</b> {fournisseur.nom}", styles["Normal"]))
+    elements.append(
+        Paragraph(f"<b>Fournisseur :</b> {fournisseur.nom}", styles["Normal"])
+    )
 
     if date_debut and date_fin:
-        elements.append(Paragraph(
-            f"Période: {date_debut.strftime('%d/%m/%Y')} → {date_fin.strftime('%d/%m/%Y')}",
-            styles["Normal"]
-        ))
+        elements.append(
+            Paragraph(
+                f"Période: {date_debut.strftime('%d/%m/%Y')} → {date_fin.strftime('%d/%m/%Y')}",
+                styles["Normal"]
+            )
+        )
 
-    elements.append(Paragraph(f"Report initial: {report:.3f}", styles["Normal"]))
+    elements.append(
+        Paragraph(f"Report initial: {report:.3f}", styles["Normal"])
+    )
+
     elements.append(Spacer(1, 10))
 
     # TABLE
     data = [["Date", "Libellé", "Débit", "Crédit", "Solde"]]
 
     for m in lignes:
+
         data.append([
             m["date"].strftime("%d/%m/%Y"),
             m["libelle"],
-            f"{m['debit']:.3f}",
-            f"{m['credit']:.3f}",
-            f"{m['solde']:.3f}",
+            f"{Decimal(m.get('debit',0)):.3f}",
+            f"{Decimal(m.get('credit',0)):.3f}",
+            f"{Decimal(m.get('solde',0)):.3f}",
         ])
 
-        for l in m.get("lignes", []):
-            data.append([
-                "",
-                f"   • {l.quantite} x {l.produit}",
-                "",
-                "",
-                ""
-            ])
+        # =========================
+        # DETAILS BONS RECEPTION
+        # =========================
+        if m.get("type") == "bon":
 
+            for l in m.get("lignes", []):
+
+                data.append([
+                    "",
+                    Paragraph(
+                        f"• {l.quantite} x {l.produit}",
+                        style_produit
+                    ),
+                    "",
+                    "",
+                    ""
+                ])
+
+        # =========================
+        # DETAILS AVOIRS -> CREDIT
+        # =========================
+        elif m.get("type") == "avoir":
+
+            for l in m.get("lignes", []):
+
+                data.append([
+                    "",
+                    Paragraph(
+                        f"• {l.quantite} x {l.produit}",
+                        style_produit
+                    ),
+                    "",
+                    "",
+                    ""
+                ])
+
+        # =========================
+        # DETAILS REGLEMENTS
+        # =========================
+        elif m.get("type") == "reglement":
+
+            for d in m.get("details_reglement", []):
+
+                echeance = (
+                    d["echeance"].strftime("%d/%m/%Y")
+                    if d.get("echeance")
+                    else ""
+                )
+
+                txt = (
+                    f"{d['montant']:.3f} TND — "
+                    f"{d['mode_paiement']}  "
+                    f"{d.get('libelle','')}- "
+                    f"{echeance}"
+                )
+
+                data.append([
+                    "",
+                    Paragraph(txt, style_produit),
+                    "",
+                    "",
+                    ""
+                ])
+
+    # =========================
+    # TOTAL FINAL
+    # =========================
     data.append([
         "TOTAL",
         "",
@@ -257,12 +368,25 @@ def releve_fournisseur_pdf(request, fournisseur_id):
         f"{solde:.3f}"
     ])
 
-    table = Table(data, colWidths=[3*cm, 8*cm, 3*cm, 3*cm, 3*cm])
+
+    table = Table(
+        data,
+        colWidths=[3*cm, 8*cm, 3*cm, 3*cm, 3*cm]
+    )
+
     table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#1f4e79")),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+
+        ("FONTSIZE", (0,0), (-1,-1), 10),
+
         ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+
         ("BACKGROUND", (0,-1), (-1,-1), colors.lightgrey),
+        # 🔥 ALIGNEMENT
+        ("ALIGN", (0,0), (1,-1), "LEFT"),   # Date + Libellé
+        ("ALIGN", (2,0), (-1,-1), "RIGHT")  # Débit + Crédit + Solde
+
     ]))
 
     elements.append(table)
@@ -275,7 +399,13 @@ def releve_fournisseur_pdf(request, fournisseur_id):
     )
 
     elements.append(Spacer(1, 6))
-    elements.append(Paragraph(f"<b>Solde Final : {solde:.3f} TND</b>", solde_style))
+
+    elements.append(
+        Paragraph(
+            f"<b>Solde Final : {solde:.3f} TND</b>",
+            solde_style
+        )
+    )
 
     doc.build(elements)
     return response

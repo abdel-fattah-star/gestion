@@ -20,12 +20,17 @@ def generer_facture_pdf(facture):
         pagesize=A4,
         rightMargin=30,
         leftMargin=30,
-        topMargin=10,
-        bottomMargin=20,
+        topMargin=0,
+        bottomMargin=10,
     )
 
     elements = []
     styles = getSampleStyleSheet()
+
+    style_libelle = styles["BodyText"]
+    style_libelle.fontName = "Helvetica"
+    style_libelle.fontSize = 8
+    style_libelle.leading = 10
 
     # ======================
     # HEADER
@@ -95,7 +100,7 @@ def generer_facture_pdf(facture):
 
     elements.append(header_table)
     elements.append(Spacer(0,0))
-    elements.append(Paragraph(f"<b>FACTURE N° {facture.numero}</b>", styles["Heading2"]))
+    elements.append(Paragraph(f"<b>FACTURE N° : {facture.numero}</b>", styles["Heading2"]))
     elements.append(Paragraph(f"Date : {facture.date.strftime('%d/%m/%Y')}", styles["Normal"]))
     elements.append(Spacer(1, 20))
 
@@ -111,7 +116,7 @@ def generer_facture_pdf(facture):
         ["Email", facture.email_client or ""],
     ]
 
-    client_table = Table(client_data, colWidths=[4*cm, 8*cm])
+    client_table = Table(client_data, colWidths=[6*cm, 13*cm])
 
     client_table.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.3, colors.grey),
@@ -124,10 +129,9 @@ def generer_facture_pdf(facture):
     # ======================
     # LIGNES FACTURE
     # ======================
-
     lignes = list(facture.lignes.all())
 
-    lignes_par_page = 14
+    lignes_par_page = 16
     total_lignes = len(lignes)
 
     pages = (total_lignes // lignes_par_page) + 1
@@ -151,14 +155,13 @@ def generer_facture_pdf(facture):
                 montant_ttc = base_tva + montant_tva
 
                 data.append([
-                    str(ligne.produit),
+                    Paragraph(str(ligne.produit), style_libelle),
                     f"{ligne.quantite}",
                     f"{ligne.prix_ht:.3f}",
                     "" if (ligne.taux_rem or 0) == 0 else f"{ligne.taux_rem}",
                     f"{ligne.taux_tva}",
                     f"{montant_ttc:.3f}",
                 ])
-
                 index += 1
 
             else:

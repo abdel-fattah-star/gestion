@@ -42,9 +42,7 @@ def verify_license():
     # -------------------------
     if not os.path.exists(path):
 
-        print("LICENCE MANQUANTE")
-        sys.exit(1)
-
+        raise Exception("LICENCE EXPIREE")
     # -------------------------
     # lecture licence
     # -------------------------

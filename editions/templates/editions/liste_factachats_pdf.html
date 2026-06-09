@@ -79,7 +79,7 @@
         <tr>
             <th>Date</th>
             <th>Numéro</th>
-            <th>Client</th>
+            <th>Fournisseur</th>
             <th>Total HT</th>
             <th>Remise</th>
             <th>Base TVA</th>
@@ -87,6 +87,8 @@
             <th>Timb.Fis</th>
             <th>Total TTC</th>
             <th>R.Source</th>
+            <th>Net.Servi</th>
+
         </tr>
     </thead>
 
@@ -106,6 +108,8 @@
 
             <td class="right">{{ facture.total_ttc|floatformat:3 }}</td>
             <td class="right">{{ facture.r_source|floatformat:3 }}</td>
+            <td class="right">{{ facture.net_servi|floatformat:3 }}</td>
+
         </tr>
         {% empty %}
         <tr>
@@ -128,6 +132,8 @@
 
             <td class="right">{{ totaux.total_ttc|default:0|floatformat:3 }}</td>
             <td class="right">{{ total_r_source|floatformat:3 }}</td>
+            <td class="right">{{ totaux_net_servi|floatformat:3 }}</td>
+
         </tr>
     </tfoot>
 </table>

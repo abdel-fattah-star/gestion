@@ -102,7 +102,7 @@ class LigneDevis(models.Model):
     produit = models.ForeignKey(Produit, on_delete=models.PROTECT)
 
     taux_rem = models.DecimalField(max_digits=4, decimal_places=2, default=0)
-    quantite = models.DecimalField(max_digits=10, decimal_places=2)
+    quantite = models.DecimalField(max_digits=10, decimal_places=3)
     prix_ht = models.DecimalField(max_digits=10, decimal_places=3)
     taux_tva = models.DecimalField(max_digits=4, decimal_places=2)
 
@@ -340,7 +340,14 @@ class AvoirClient(models.Model):
         super().save(*args, **kwargs)
 
         # recalcul SAFE
-        self.calculer_totaux()
+        totaux = self.calculer_totaux()
+
+        self.total_ht = totaux["total_ht"]
+        self.total_rem = totaux["total_rem"]
+        self.base_tva = totaux["base_tva"]
+        self.total_tva = totaux["total_tva"]
+        self.total_ttc = totaux["total_ttc"]
+
         super().save(update_fields=[
             "total_ht",
             "total_rem",
@@ -371,7 +378,13 @@ class LigneAvoirClient(models.Model):
         super().save(*args, **kwargs)
 
         # recalcul propre (comme bon livraison)
-        self.avoir_client.calculer_totaux()
+        totaux = self.avoir_client.calculer_totaux()
+
+        self.avoir_client.total_ht = totaux["total_ht"]
+        self.avoir_client.total_rem = totaux["total_rem"]
+        self.avoir_client.base_tva = totaux["base_tva"]
+        self.avoir_client.total_tva = totaux["total_tva"]
+        self.avoir_client.total_ttc = totaux["total_ttc"]
         self.avoir_client.save(update_fields=[
             "total_ht",
             "total_rem",
@@ -485,7 +498,7 @@ class LigneFacture(models.Model):
     )
     produit = models.ForeignKey(Produit, on_delete=models.PROTECT)
     taux_rem = models.DecimalField(max_digits=4, decimal_places=2, default=0)
-    quantite = models.DecimalField(max_digits=10, decimal_places=2)
+    quantite = models.DecimalField(max_digits=10, decimal_places=3)
     prix_ht = models.DecimalField(max_digits=10, decimal_places=3)
     taux_tva = models.DecimalField(max_digits=4, decimal_places=2)
 

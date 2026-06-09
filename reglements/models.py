@@ -33,12 +33,17 @@ class ReglementClient(models.Model):
     def save(self, *args, **kwargs):
 
         nouveau = self.pk is None
+
         if not self.numero:
 
             dernier = ReglementClient.objects.order_by("-id").first()
 
-            if dernier:
-                num = int(dernier.numero.split("-")[1]) + 1
+            if dernier and dernier.numero and "-" in dernier.numero:
+
+                try:
+                    num = int(dernier.numero.split("-")[1]) + 1
+                except:
+                    num = 1
             else:
                 num = 1
 
@@ -47,13 +52,17 @@ class ReglementClient(models.Model):
         super().save(*args, **kwargs)
 
         if nouveau:
+
             MouvementCompte.objects.create(
+
                 date=self.date,
                 type_mouvement='entree',
                 compte=self.compte,
                 montant=self.montant,
-                reference=f"Reglement client {self.id}"
+                reference=f"Reglement client {self.client}"
+
             )
+
     def __str__(self):
         return self.numero
 
@@ -90,26 +99,24 @@ class ReglementFournisseur(models.Model):
 
         nouveau = self.pk is None
 
-        if not self.numero:
-
-            dernier = ReglementFournisseur.objects.order_by("-id").first()
-
-            if dernier:
-                num = int(dernier.numero.split("-")[1]) + 1
-            else:
-                num = 1
-
-            self.numero = f"RF-{num:04d}"
-
         super().save(*args, **kwargs)
 
+        if not self.numero:
+
+            self.numero = f"RF-{self.id:04d}"
+
+            ReglementFournisseur.objects.filter(
+                pk=self.pk
+            ).update(numero=self.numero)
+
         if nouveau:
+
             MouvementCompte.objects.create(
                 date=self.date,
-                type_mouvement='sortie',
+                type_mouvement="sortie",
                 compte=self.compte,
                 montant=self.montant,
-                reference=f"Reglement fournisseur {self.id}"
+                reference=f"Reglement fournisseur {self.fournisseur}"
             )
 
     def __str__(self):

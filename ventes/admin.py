@@ -357,7 +357,7 @@ class BonLivraisonAdmin(admin.ModelAdmin):
 
     list_display = (
         "numero",
-        "mf_client",
+        "client",
         "statut",
         "adresse_client",
         "telephone_client",

@@ -120,7 +120,7 @@ class LigneDemande(models.Model):
         on_delete=models.PROTECT
     )
 
-    quantite = models.DecimalField(max_digits=10, decimal_places=2)
+    quantite = models.DecimalField(max_digits=10, decimal_places=3)
 
     prix_ht = models.DecimalField("Prix Achat",max_digits=10, decimal_places=3)
 
@@ -427,7 +427,7 @@ class LigneFactureAchat(models.Model):
         on_delete=models.PROTECT
     )
 
-    quantite = models.DecimalField(max_digits=10, decimal_places=2)
+    quantite = models.DecimalField(max_digits=10, decimal_places=3)
 
     prix_ht = models.DecimalField("Prix Achat", max_digits=10, decimal_places=3)
 
